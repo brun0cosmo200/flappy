@@ -4,6 +4,8 @@ Flappy/
 bin/
 obj/
 
+shots/
+
 # OS / editor
 .DS_Store
 Thumbs.db
