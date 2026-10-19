@@ -1,0 +1,12 @@
+# Original Windows build — not needed for the web app
+Flappy/
+*.user
+bin/
+obj/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
