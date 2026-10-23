@@ -9,11 +9,12 @@
   const BirdX = 100, BirdR = 14, GroundH = 40;
   const CapH = 28, CapOver = 5;
   const DeadLockout = 0.5, ShakeTime = 0.35;
+  const SpeedRamp = 5, SpeedRampMax = 75;
   const ContinueCost = 25, MissionScore = 10, MissionReward = 30;
   const MedalBronze = 10, MedalSilver = 20, MedalGold = 30, MedalPlatinum = 40;
   const DailyTries = 3;
   const ItemW = 300, ItemH = 46, ItemStep = 64, MenuTop = 252;
-  const CellW = 40, CellH = 46, CellY = 412, CellCols = 8;
+  const CellW = 38, CellH = 46, CellY = 412, CellCols = 10;
   const SAVE_KEY = "flappy-c-save";
 
   const State = {
@@ -22,7 +23,7 @@
     Paused: "Paused", Dead: "Dead",
   };
   const Feat = { None: "None", Score: "Score", PipesTotal: "PipesTotal", NightPipes: "NightPipes", CoinsTotal: "CoinsTotal", Runs: "Runs" };
-  const Style = { Classic: "Classic", Zombie: "Zombie", Robot: "Robot", Ninja: "Ninja", Ghost: "Ghost", Dragon: "Dragon", Phoenix: "Phoenix", Alien: "Alien", Legendary: "Legendary" };
+  const Style = { Classic: "Classic", Zombie: "Zombie", Robot: "Robot", Ninja: "Ninja", Ghost: "Ghost", Dragon: "Dragon", Phoenix: "Phoenix", Alien: "Alien", Legendary: "Legendary", Vampire: "Vampire" };
   const DisplayNames = ["Janela", "Grande", "Tela cheia"];
 
   const rgb = (r, g, b, a = 255) => `rgba(${r|0},${g|0},${b|0},${a / 255})`;
@@ -40,6 +41,10 @@
     { name: "Roxo", color: [147, 112, 219], price: 180, style: Style.Classic, feat: Feat.None, goal: 0 },
     { name: "Preto", color: [40, 40, 52], price: 250, style: Style.Classic, feat: Feat.None, goal: 0 },
     { name: "Prata", color: [200, 205, 218], price: 400, style: Style.Classic, feat: Feat.None, goal: 0 },
+    { name: "Magenta", color: [255, 64, 150], price: 550, style: Style.Classic, feat: Feat.None, goal: 0 },
+    { name: "Laranja", color: [255, 140, 0], price: 620, style: Style.Classic, feat: Feat.None, goal: 0 },
+    { name: "Lima", color: [154, 205, 50], price: 700, style: Style.Classic, feat: Feat.None, goal: 0 },
+    { name: "Vampiro", color: [104, 40, 62], price: 0, style: Style.Vampire, feat: Feat.NightPipes, goal: 40 },
     { name: "Zumbi", color: [126, 172, 82], price: 0, style: Style.Zombie, feat: Feat.Score, goal: 10 },
     { name: "Robô", color: [156, 176, 198], price: 0, style: Style.Robot, feat: Feat.Score, goal: 25 },
     { name: "Ninja", color: [62, 64, 80], price: 0, style: Style.Ninja, feat: Feat.PipesTotal, goal: 100 },
@@ -54,6 +59,16 @@
     { name: "Dia", top: [56, 168, 232], bottom: [214, 242, 255], hillFar: [126, 198, 186], hillNear: [78, 168, 96], body: "Sun", dark: false },
     { name: "Entardecer", top: [255, 92, 72], bottom: [255, 206, 128], hillFar: [214, 110, 92], hillNear: [148, 70, 68], body: "Sunset", dark: false },
     { name: "Noite", top: [8, 8, 28], bottom: [78, 52, 128], hillFar: [42, 38, 92], hillNear: [22, 22, 58], body: "Moon", dark: true },
+    {
+      name: "Inverno", top: [148, 196, 232], bottom: [235, 246, 252], hillFar: [168, 202, 226], hillNear: [226, 238, 248],
+      body: "Sun", dark: false, snow: true,
+      ground: { dirt: [214, 224, 238], dirtDark: [186, 198, 218], top: [244, 250, 255], topPattern: [206, 226, 244], line: [120, 150, 180] },
+    },
+    {
+      name: "Deserto", top: [92, 174, 232], bottom: [252, 226, 158], hillFar: [224, 186, 118], hillNear: [240, 206, 132],
+      body: "Sun", dark: false, flora: "cactus",
+      ground: { dirt: [226, 192, 122], dirtDark: [198, 160, 92], top: [246, 216, 134], topPattern: [216, 180, 100], line: [140, 104, 46] },
+    },
   ];
   const Levels = [
     { name: "Fácil", gap: 190, speed: 140, coinMult: 0.5 },
@@ -80,6 +95,7 @@
       [Style.Phoenix]: [255, 186, 60],
       [Style.Alien]: [175, 242, 110],
       [Style.Legendary]: [255, 228, 120],
+      [Style.Vampire]: [196, 62, 92],
     }[skin.style] || mix(skin.color, [255, 255, 255], 0.55);
   }
   const tier = (n) => Math.min(1 + Math.floor(n / 10), 5);
@@ -127,7 +143,7 @@
   let cssW = W, cssH = H;
 
   const gap = () => (dailyRun ? Levels[1].gap : Levels[level].gap);
-  const pipeSpeed = () => (dailyRun ? Levels[1].speed : Levels[level].speed);
+  const pipeSpeed = () => (dailyRun ? Levels[1].speed : Levels[level].speed) + Math.min(score * SpeedRamp, SpeedRampMax);
   const coinMult = () => (dailyRun ? Levels[1].coinMult : Levels[level].coinMult);
   const dailyLeft = () => Math.max(0, DailyTries - dailyAttempts);
   const isOwned = (i) => owned.has(Birds[i].name);
@@ -664,7 +680,7 @@
     const u = ((x + offset) / wave) * Math.PI * 2;
     return baseY - amp * (0.62 * Math.sin(u) + 0.38 * Math.sin(u * 2.35 + 1.15));
   }
-  function drawHills(brush, offset, baseY, amp, wave, trees) {
+  function drawHills(brush, offset, baseY, amp, wave, trees, flora = "tree") {
     ctx.beginPath();
     ctx.moveTo(-12, H);
     for (let x = -12; x <= W + 24; x += 6) ctx.lineTo(x, hillY(offset, baseY, amp, wave, x));
@@ -677,11 +693,22 @@
       let x = ((i * 97 - offset * 0.35) % (W + 80) + (W + 80)) % (W + 80) - 20;
       if (x < -30 || x > W + 20) continue;
       const y = hillY(offset, baseY, amp, wave, x);
-      ctx.fillStyle = "rgba(30,22,18,0.27)";
-      ctx.fillRect(x - 2.2, y - 18, 4.4, 18);
-      ctx.fillStyle = "rgba(18,48,22,0.43)";
-      ctx.beginPath(); ctx.ellipse(x, y - 23, 12, 11, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(x, y - 34, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+      if (flora === "cactus") {
+        ctx.fillStyle = "rgba(90,64,20,0.27)";
+        ctx.beginPath(); ctx.ellipse(x, y - 1, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(44,110,42,0.55)";
+        ctx.fillRect(x - 2.5, y - 20, 5, 20);
+        ctx.fillRect(x - 9, y - 16, 4, 9);
+        ctx.fillRect(x - 9, y - 10, 7, 3);
+        ctx.fillRect(x + 5, y - 13, 4, 7);
+        ctx.fillRect(x + 2, y - 9, 7, 3);
+      } else {
+        ctx.fillStyle = "rgba(30,22,18,0.27)";
+        ctx.fillRect(x - 2.2, y - 18, 4.4, 18);
+        ctx.fillStyle = "rgba(18,48,22,0.43)";
+        ctx.beginPath(); ctx.ellipse(x, y - 23, 12, 11, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x, y - 34, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+      }
     }
   }
   function drawCelestial(sky, t) {
@@ -768,17 +795,20 @@
   }
   function drawGround() {
     const top = H - GroundH;
-    ctx.fillStyle = "rgb(196,168,98)"; ctx.fillRect(-10, top, W + 20, GroundH);
-    ctx.fillStyle = "rgb(168,132,72)"; ctx.fillRect(-10, top + 16, W + 20, GroundH - 16);
-    ctx.fillStyle = "rgb(92,176,42)"; ctx.fillRect(-10, top, W + 20, 12);
+    const G = Backgrounds[bgSkin].ground || {
+      dirt: [196, 168, 98], dirtDark: [168, 132, 72], top: [92, 176, 42], topPattern: [168, 228, 72], line: [48, 92, 18],
+    };
+    ctx.fillStyle = col(G.dirt); ctx.fillRect(-10, top, W + 20, GroundH);
+    ctx.fillStyle = col(G.dirtDark); ctx.fillRect(-10, top + 16, W + 20, GroundH - 16);
+    ctx.fillStyle = col(G.top); ctx.fillRect(-10, top, W + 20, 12);
     const off = groundX % 26;
-    ctx.fillStyle = "rgb(168,228,72)";
+    ctx.fillStyle = col(G.topPattern);
     for (let x = -off - 26; x < W + 26; x += 26) {
       ctx.beginPath();
       ctx.moveTo(x + 9, top); ctx.lineTo(x + 22, top); ctx.lineTo(x + 13, top + 12); ctx.lineTo(x, top + 12);
       ctx.fill();
     }
-    ctx.strokeStyle = "rgb(48,92,18)"; ctx.lineWidth = 3;
+    ctx.strokeStyle = col(G.line); ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(-10, top); ctx.lineTo(W + 10, top); ctx.stroke();
   }
 
@@ -800,7 +830,7 @@
     const style = skin.style, body = skin.color;
     const robot = style === Style.Robot, zombie = style === Style.Zombie, ninja = style === Style.Ninja;
     const ghost = style === Style.Ghost, dragon = style === Style.Dragon, phoenix = style === Style.Phoenix;
-    const alien = style === Style.Alien, legend = style === Style.Legendary;
+    const alien = style === Style.Alien, legend = style === Style.Legendary, vampire = style === Style.Vampire;
     const darkCol = mix(body, [0, 0, 0], robot ? 0.45 : 0.38);
     const lightCol = mix(body, [255, 255, 255], ghost ? 0.8 : legend ? 0.68 : 0.62);
     const wingCol = mix(body, [0, 0, 0], robot ? 0.28 : 0.08);
@@ -809,7 +839,7 @@
     const beakA = {
       [Style.Robot]: [214, 224, 236], [Style.Zombie]: [170, 180, 88], [Style.Ninja]: [222, 172, 66],
       [Style.Ghost]: [212, 242, 252], [Style.Dragon]: [255, 124, 62], [Style.Phoenix]: [255, 192, 62],
-      [Style.Alien]: [196, 146, 232], [Style.Legendary]: [255, 210, 84],
+      [Style.Alien]: [196, 146, 232], [Style.Legendary]: [255, 210, 84], [Style.Vampire]: [172, 92, 96],
     }[style] || [255, 176, 28];
     ctx.save();
     ctx.translate(cx, cy); ctx.rotate(angle * Math.PI / 180); ctx.scale(scale, scale);
@@ -841,8 +871,9 @@
     if (phoenix) poly([[-12, -2], [-40, -13], [-25, -1], [-42, 7], [-24, 7], [-11, 6]], "rgb(255,130,40)", col(outline));
     else if (dragon) poly([[-13, -2], [-32, -10], [-25, -1], [-36, 6], [-22, 6], [-12, 6]], col(darkCol), col(outline));
     else if (robot) poly([[-13, -3], [-29, -8], [-23, -1], [-29, 4], [-13, 6]], col(mix(body, [0, 0, 0], 0.15)), col(outline));
+    else if (vampire) poly([[-13, -2], [-34, -15], [-26, -2], [-37, 7], [-13, 6]], "rgb(96,18,36)", col(outline));
     else if (!ghost) poly([[-13, -2], [-30, -11], [-24, -2], [-32, 3], [-24, 6], [-13, 6]], col(darkCol), col(outline));
-    if (style === Style.Classic || zombie) {
+    if (style === Style.Classic || zombie || vampire) {
       poly(zombie ? [[-5, -12], [-10, -22], [-3, -15], [1, -20], [4, -12]] : [[-4, -13], [-2, -24], [1, -15], [5, -23], [8, -12]], col(darkCol), col(outline));
     }
     const bodyG = ctx.createRadialGradient(-5, -8, 2, 0, 0, 24);
@@ -873,6 +904,10 @@
     } else if (ninja) {
       ellipse(4, -10, 12, 7, "rgb(250,250,242)", col(outline));
       ellipse(9, -8.5, 5, 4.5, "#000");
+    } else if (vampire) {
+      ellipse(3.5, -13, 13.5, 13.5, "rgb(240,232,236)", col(outline));
+      ctx.fillStyle = "rgb(178,26,40)"; ellipse(9.2, -8.8, 6.2, 6.2);
+      ctx.fillStyle = "#fff"; ellipse(12.2, -8.4, 2.3, 2.3);
     } else {
       ellipse(3.5, -13, 13.5, 13.5, "#fff", col(outline));
       ctx.fillStyle = zombie ? "rgb(160,30,30)" : phoenix ? "rgb(255,140,30)" : "#000";
@@ -882,6 +917,10 @@
     }
     poly([[15, -4], [31, 1.5], [15, 3.2]], col(beakA), col(outline));
     poly([[15, 3.2], [26, 3.6], [16, 8.5]], col(mix(beakA, [0, 0, 0], 0.3)), col(outline));
+    if (vampire) {
+      poly([[16, 5], [18.5, 10], [21, 5]], "#fff", col(outline), 1);
+      poly([[22.5, 5], [25, 10], [27.5, 5]], "#fff", col(outline), 1);
+    }
     ctx.restore();
   }
 
@@ -908,7 +947,7 @@
       if (i === viewSkin) fillRound(cell.x, cell.y, cell.w, cell.h, 8, "rgba(255,248,220,0.63)", "#fff", 2);
       if (i === birdSkin) { ctx.strokeStyle = "rgb(255,205,40)"; ctx.lineWidth = 2.5; roundRect(cell.x, cell.y, cell.w, cell.h, 8); ctx.stroke(); }
       const shown = owns ? Birds[i] : { ...Birds[i], color: mix(Birds[i].color, [0, 0, 0], Birds[i].feat !== Feat.None ? 0.35 : 0.6) };
-      drawBird(r.x + 20, r.y + 24, 0.56, 0, 0, shown);
+      drawBird(r.x + 19, r.y + 24, 0.56, 0, 0, shown);
       if (Birds[i].feat !== Feat.None)
         fillStar(r.x + r.w - 8, r.y + 8, 4.6, 2.1, owns ? "rgb(255,230,110)" : "rgba(255,220,120,0.47)", "rgb(70,45,10)");
       if (!owns) padlock(r.x + r.w - 10, r.y + r.h - 12, 0.5);
@@ -961,18 +1000,18 @@
     for (let i = 0; i < Birds.length; i++) {
       const skin = Birds[i];
       if (skin.feat === Feat.None) continue;
-      const y = 108 + row * 42, done = isOwned(i);
+      const y = 108 + row * 34, done = isOwned(i);
       const p = Math.min(featValue(skin), skin.goal);
       const progress = skin.goal > 0 ? clamp(p / skin.goal, 0, 1) : 0;
-      fillRound(24, y, W - 48, 40, 10, "rgba(8,12,28,0.96)", done ? "rgb(255,206,70)" : "rgba(200,215,235,0.31)", done ? 1.8 : 1);
+      fillRound(24, y, W - 48, 33, 10, "rgba(8,12,28,0.96)", done ? "rgb(255,206,70)" : "rgba(200,215,235,0.31)", done ? 1.8 : 1);
       const shown = done ? skin : { ...skin, color: mix(skin.color, [0, 0, 0], 0.35) };
-      drawBird(49, y + 20, 0.5, 0, 0, shown);
+      drawBird(49, y + 16, 0.5, 0, 0, shown);
       ctx.textAlign = "left"; ctx.textBaseline = "top";
-      ctx.font = '700 16px "Segoe UI", system-ui'; ctx.fillStyle = "#fff"; ctx.fillText(skin.name, 75, y + 3);
-      ctx.font = '400 12px "Segoe UI", system-ui'; ctx.fillStyle = "#ccc"; ctx.fillText(featName(skin.feat), 75, y + 20);
-      ctx.fillStyle = "rgba(8,12,28,0.59)"; ctx.fillRect(300, y + 23, 70, 3);
-      ctx.fillStyle = "rgb(255,208,72)"; ctx.fillRect(300, y + 23, 70 * progress, 3);
-      outlined(done ? "OK" : `${p}/${skin.goal}`, 13, 344, y + 2, done ? "rgb(255,236,150)" : "#fff", 255, 2.5, "400");
+      ctx.font = '700 16px "Segoe UI", system-ui'; ctx.fillStyle = "#fff"; ctx.fillText(skin.name, 75, y + 2);
+      ctx.font = '400 12px "Segoe UI", system-ui'; ctx.fillStyle = "#ccc";       ctx.fillText(featName(skin.feat), 75, y + 17);
+      ctx.fillStyle = "rgba(8,12,28,0.59)"; ctx.fillRect(300, y + 17, 70, 3);
+      ctx.fillStyle = "rgb(255,208,72)"; ctx.fillRect(300, y + 17, 70 * progress, 3);
+      outlined(done ? "OK" : `${p}/${skin.goal}`, 13, 344, y + 1, done ? "rgb(255,236,150)" : "#fff", 255, 2.5, "400");
       row++;
     }
   }
@@ -1087,8 +1126,17 @@
     drawCelestial(sky, time);
     for (let i = 0; i < cloudX.length; i++) drawCloud(cloudX[i], cloudY[i], cloudS[i], sky.dark);
     drawHills(col(mix(sky.hillFar, sky.hillNear, 0.45)), hillFar * 1.6, H - GroundH - 118, 34, 320, false);
-    drawHills(col(sky.hillFar), hillFar, H - GroundH - 78, 42, 250, true);
+    drawHills(col(sky.hillFar), hillFar, H - GroundH - 78, 42, 250, true, sky.flora);
     drawHills(col(sky.hillNear), hillNear, H - GroundH - 26, 24, 160, false);
+    if (sky.snow) {
+      for (let i = 0; i < 28; i++) {
+        const sp = 24 + (i % 5) * 12;
+        const y = ((i * 47 + time * sp) % (H + 16)) - 8;
+        const x = ((i * 149 + time * (10 + (i % 4) * 8) + Math.sin(time * 1.6 + i * 1.3) * 16) % W + W) % W;
+        ctx.fillStyle = `rgba(255,255,255,${0.45 + (i % 3) * 0.2})`;
+        ctx.beginPath(); ctx.arc(x, y, 1.2 + (i % 4) * 0.45, 0, Math.PI * 2); ctx.fill();
+      }
+    }
 
     const playing = [State.Playing, State.Dead, State.Paused, State.Ready].includes(state);
     if (playing) {
