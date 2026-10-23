@@ -9,6 +9,7 @@
   const BirdX = 100, BirdR = 14, GroundH = 40;
   const CapH = 28, CapOver = 5;
   const DeadLockout = 0.5, ShakeTime = 0.35;
+  const SpeedRamp = 5, SpeedRampMax = 75;
   const ContinueCost = 25, MissionScore = 10, MissionReward = 30;
   const MedalBronze = 10, MedalSilver = 20, MedalGold = 30, MedalPlatinum = 40;
   const DailyTries = 3;
@@ -142,7 +143,7 @@
   let cssW = W, cssH = H;
 
   const gap = () => (dailyRun ? Levels[1].gap : Levels[level].gap);
-  const pipeSpeed = () => (dailyRun ? Levels[1].speed : Levels[level].speed);
+  const pipeSpeed = () => (dailyRun ? Levels[1].speed : Levels[level].speed) + Math.min(score * SpeedRamp, SpeedRampMax);
   const coinMult = () => (dailyRun ? Levels[1].coinMult : Levels[level].coinMult);
   const dailyLeft = () => Math.max(0, DailyTries - dailyAttempts);
   const isOwned = (i) => owned.has(Birds[i].name);
